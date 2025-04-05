@@ -27,21 +27,17 @@ function Header() {
     }`}>
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo with animation */}
-          <Link to="/" className="flex items-center space-x-3 group">
-            <motion.div
-              initial={{ rotate: -10 }}
-              animate={{ rotate: 0 }}
-              transition={{ duration: 0.5 }}
-              className="relative h-12 w-12"
-            >
-              <div className="absolute -inset-1 bg-gradient-to-r from-teal-400 via-blue-500 to-orange-400 rounded-full opacity-75 blur-sm group-hover:opacity-100 transition duration-300"></div>
-              <div className="relative flex items-center justify-center h-full w-full bg-white rounded-full">
-                <img src="/sathee-logo.png" alt="Sathee Logo" className="h-10 w-10 object-contain" />
-              </div>
-            </motion.div>
+          {/* Logo - Updated with simplified design */}
+          <Link to="/" className="flex items-center space-x-3">
+            <div className="relative h-12 w-12 rounded-full overflow-hidden bg-blue-50">
+              <img 
+                src="/sathee-logo.png" 
+                alt="Sathee Logo" 
+                className="h-full w-full object-contain p-1" 
+              />
+            </div>
             <div className="flex flex-col items-start">
-              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-600">
+              <span className="text-2xl font-bold text-blue-600">
                 Sathee
               </span>
               <span className="text-xs text-gray-500 -mt-1">Your Companion</span>
@@ -81,7 +77,7 @@ function Header() {
                 <>
                   <Link 
                     to="/login" 
-                    className="px-5 py-2 rounded-full font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:shadow-md hover:shadow-blue-200 transition-all duration-300 transform hover:translate-y-[-2px]"
+                    className="px-5 py-2 rounded-full font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300"
                   >
                     Login
                   </Link>
@@ -123,7 +119,7 @@ function Header() {
                     <Link 
                       to="/login" 
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full py-2 text-center rounded-full font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 shadow-sm"
+                      className="w-full py-2 text-center rounded-full font-medium text-white bg-blue-600 hover:bg-blue-700"
                     >
                       Login
                     </Link>
