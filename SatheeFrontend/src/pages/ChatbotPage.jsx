@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
+import { saveChat } from '../utilities/ChatStoreUtil';
 
 function ChatbotPage() {
   const location = useLocation();
@@ -9,8 +10,12 @@ function ChatbotPage() {
   const [isTyping, setIsTyping] = useState(false);
   const chatContainerRef = useRef(null);
   const [processedMessages, setProcessedMessages] = useState(new Set());
+  const [apiError, setApiError] = useState(null);
+  const [chatId, setChatId] = useState(`chat-${Date.now()}`);
+  const initialMessageSent = useRef(false);
 
-  const botResponses = [
+  // Fallback responses in case API fails
+  const fallbackResponses = [
     "I understand this is difficult. Can you tell me more about what's troubling you?",
     "You're not alone in this. I'm here to listen and support you.",
     "It's brave of you to share these feelings. How long have you been feeling this way?",
@@ -21,17 +26,94 @@ function ChatbotPage() {
 
   // Initialize chat with welcome message only once
   useEffect(() => {
-    if (location.state?.initialMessage) {
+    // Check if we're continuing a previous conversation
+    if (location.state?.chatId) {
+      setChatId(location.state.chatId);
+      
+      // Load this specific conversation
+      const savedChat = JSON.parse(localStorage.getItem('satheeChats')) || [];
+      const chat = savedChat.find(c => c.id === location.state.chatId);
+      
+      if (chat && chat.messages.length > 0) {
+        setMessages(chat.messages);
+        // Mark all messages as processed
+        const processedIds = new Set();
+        chat.messages.forEach(msg => processedIds.add(msg.id));
+        setProcessedMessages(processedIds);
+      } else {
+        // Only add welcome message if this is a new chat
+        addWelcomeMessageIfNeeded();
+      }
+    } else if (location.state?.initialMessage && !initialMessageSent.current) {
+      // Handle initial message if provided and not already processed
+      initialMessageSent.current = true;
       handleInitialMessage(location.state.initialMessage);
     } else {
-      // Only add welcome message if no messages exist yet
-      if (messages.length === 0) {
-        addBotMessage("Hi, I'm your Sathee. I'm here to listen and support you. How are you feeling today?");
+      // Only add welcome message if this is a new chat with no messages
+      addWelcomeMessageIfNeeded();
+    }
+  }, [location.state]);
+
+  // Helper function to add welcome message only if needed
+  const addWelcomeMessageIfNeeded = () => {
+    if (messages.length === 0 && !initialMessageSent.current) {
+      const welcomeMessageId = `bot-welcome-${Date.now()}`;
+      if (!processedMessages.has(welcomeMessageId)) {
+        addBotMessage("Hi, I'm your Sathee. I'm here to listen and support you. How are you feeling today?", welcomeMessageId);
       }
     }
-  }, []);
+  };
 
-  const handleInitialMessage = (message) => {
+  // Save chat to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveChat(chatId, messages);
+    }
+  }, [messages, chatId]);
+
+  const fetchBotResponse = async (userMessage) => {
+    try {
+      setApiError(null);
+      const response = await fetch('http://localhost:5000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_input: userMessage }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`);
+      }
+  
+      const data = await response.json();
+      // Extract just the response part, not the thinking process
+      const fullResponse = data.final_safe_response || data.supportive_response;
+      
+      // If the response contains the pattern "Sathee's response would be..."
+      if (fullResponse.includes("Sathee's response would be")) {
+        // Extract only the actual response part (within quotes)
+        const actualResponse = fullResponse.match(/"([^"]+)"/);
+        if (actualResponse && actualResponse[1]) {
+          return actualResponse[1];
+        }
+        // If no quotes, try to extract everything after the colon
+        const colonSplit = fullResponse.split(":");
+        if (colonSplit.length > 1) {
+          return colonSplit.slice(1).join(":").trim();
+        }
+      }
+      
+      return fullResponse;
+    } catch (error) {
+      console.error('Error fetching response:', error);
+      setApiError(error.message);
+      // Return a random fallback response if API fails
+      return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+    }
+  };
+
+  const handleInitialMessage = async (message) => {
     const messageId = `user-${Date.now()}`;
     
     // Prevent duplicate processing of the initial message
@@ -40,12 +122,16 @@ function ChatbotPage() {
       addMessage('user', message, messageId);
       
       setIsTyping(true);
-      setTimeout(() => {
+      try {
+        const botResponse = await fetchBotResponse(message);
         setIsTyping(false);
-        // Use a response from the array instead of hardcoding to avoid repetition
-        const responseIndex = Math.floor(Math.random() * botResponses.length);
-        addBotMessage(botResponses[responseIndex]);
-      }, 1500);
+        addBotMessage(botResponse);
+      } catch (error) {
+        setIsTyping(false);
+        // Use a fallback response if API fails
+        const responseIndex = Math.floor(Math.random() * fallbackResponses.length);
+        addBotMessage(fallbackResponses[responseIndex]);
+      }
     }
   };
 
@@ -59,12 +145,12 @@ function ChatbotPage() {
     }
   };
 
-  const addBotMessage = (text) => {
-    const messageId = `bot-${Date.now()}`;
+  const addBotMessage = (text, id = null) => {
+    const messageId = id || `bot-${Date.now()}`;
     addMessage('bot', text, messageId);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
 
@@ -75,11 +161,31 @@ function ChatbotPage() {
     addMessage('user', userMessage, messageId);
     
     setIsTyping(true);
-    setTimeout(() => {
+    try {
+      const botResponse = await fetchBotResponse(userMessage);
       setIsTyping(false);
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
+      
+      // Format the response to avoid numbered lists with asterisks
+      const formattedResponse = formatBotResponse(botResponse);
+      addBotMessage(formattedResponse);
+    } catch (error) {
+      setIsTyping(false);
+      // Use a fallback response if API fails
+      const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       addBotMessage(randomResponse);
-    }, 1500);
+    }
+  };
+
+  // Format bot responses to avoid numbered lists with asterisks
+  const formatBotResponse = (text) => {
+    // Check if the text contains a pattern like "1. **Title**:" format
+    if (/\d+\.\s+\*\*[^*]+\*\*:/.test(text)) {
+      // Replace numbered items with paragraph breaks
+      return text
+        .replace(/(\d+\.\s+)\*\*([^*]+)\*\*:/g, '\n$2:')
+        .replace(/^\s+|\s+$/g, ''); // Trim leading/trailing whitespace
+    }
+    return text;
   };
 
   useEffect(() => {
@@ -97,31 +203,44 @@ function ChatbotPage() {
           className="bg-white/80 rounded-2xl shadow-xl overflow-hidden glass-effect border border-gray-100"
         >
           <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6">
-            <div className="flex items-center space-x-4">
-              <motion.div 
-                className="flex items-center justify-center"
-                initial={{ rotate: -180, scale: 0 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                {/* Using the logo class from your CSS */}
-                <img 
-                  src="/sathee-logo.png" 
-                  alt="Sathee Logo" 
-                  className="logo" 
-                  style={{ 
-                    width: '3em', 
-                    height: '3em', 
-                    padding: '0.5em',
-                    background: 'white',
-                    borderRadius: '50%'
-                  }} 
-                />
-              </motion.div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">Sathee Companion</h2>
-                <p className="text-blue-100 text-sm">Your supportive AI friend</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <motion.div 
+                  className="flex items-center justify-center"
+                  initial={{ rotate: -180, scale: 0 }}
+                  animate={{ rotate: 0, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <img 
+                    src="/sathee-logo.png" 
+                    alt="Sathee Logo" 
+                    className="logo" 
+                    style={{ 
+                      width: '3em', 
+                      height: '3em', 
+                      padding: '0.5em',
+                      background: 'white',
+                      borderRadius: '50%'
+                    }} 
+                  />
+                </motion.div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Sathee Companion</h2>
+                  <p className="text-blue-100 text-sm">Your supportive AI friend</p>
+                </div>
               </div>
+              <Link to="/history">
+                <motion.button 
+                  className="bg-white text-blue-600 py-2 px-4 rounded-full font-medium flex items-center"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  History
+                </motion.button>
+              </Link>
             </div>
           </div>
           
@@ -163,7 +282,11 @@ function ChatbotPage() {
                       : 'chat-bubble-bot'
                   }`}
                 >
-                  {message.text}
+                  {message.text.split('\n').map((paragraph, index) => (
+                    <p key={index} className={index > 0 ? 'mt-3' : ''}>
+                      {paragraph}
+                    </p>
+                  ))}
                 </div>
                 {message.sender === 'user' && (
                   <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center ml-2 self-end mb-1">
@@ -199,6 +322,11 @@ function ChatbotPage() {
                   </div>
                 </div>
               </motion.div>
+            )}
+            {apiError && (
+              <div className="text-center p-2 text-sm text-red-500">
+                <p>Connection issue. Using backup responses.</p>
+              </div>
             )}
           </div>
           
