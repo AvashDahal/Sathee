@@ -1,248 +1,235 @@
 import User from '../models/userModel.js';
 import jwt from 'jsonwebtoken';
-import passport from 'passport';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
-import Role1 from '../models/userModel.js';
-import Role2 from '../models/userModel.js';
-// Helper functions to sign tokens
-export const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+
+// Helper functions
+const signToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
-};
 
-export const signRefreshToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
+const signRefreshToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   });
+
+const durationToMilliseconds = (duration) => {
+  const match = duration?.match(/^(\d+)([dhms])$/);
+  if (!match) throw new Error(`Invalid duration format: ${duration}`);
+
+  const [_, value, unit] = match;
+  const num = parseInt(value, 10);
+
+  return {
+    d: num * 86400000,
+    h: num * 3600000,
+    m: num * 60000,
+    s: num * 1000,
+  }[unit];
 };
 
-// Signup function
+// Signup
 export const signup = async (req, res) => {
-  const { fullName, email, password, confirmPassword } = req.body;
-
-  if (password !== confirmPassword) {
-    return res.status(400).json({ status: 'fail', message: 'Passwords do not match' });
-  }
-
   try {
-    const newUser = await User.create({ fullName, email, password, role: 'undefined' });
+    const { fullName, email, password, confirmPassword } = req.body;
+    console.log("req.body:", req.body);
+    if (!fullName || !email || !password)
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Missing required fields',
+        details: {
+          fullName: fullName ? 'provided' : 'missing',
+          email: email ? 'provided' : 'missing',
+          password: password ? 'provided' : 'missing',
+        },
+      });
+
+    if (password !== confirmPassword)
+      return res.status(400).json({ status: 'fail', message: 'Passwords do not match' });
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(400).json({ status: 'fail', message: 'Email is already in use' });
+
+    const newUser = await User.create({ fullName, email, password, role: 'pending' });
+
     const token = signToken(newUser._id);
     const refreshToken = signRefreshToken(newUser._id);
-    res.status(201).json({ status: 'success', token, refreshToken });
+
+    res.status(201).json({
+      status: 'success',
+      token,
+      refreshToken,
+      user: {
+        id: newUser._id,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        role: newUser.role,
+      },
+    });
   } catch (err) {
-    res.status(400).json({ status: 'fail', message: err.message });
+    console.error("Signup error:", err);
+    res.status(500).json({ status: 'fail', message: 'Error creating user', error: err.message });
   }
 };
 
-// Login function
+// Login
 export const login = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ status: 'fail', message: 'Please provide email and password!' });
-  }
-
-  const user = await User.findOne({ email }).select('+password');
-  if (!user || !(await user.correctPassword(password, user.password))) {
-    return res.status(401).json({ status: 'fail', message: 'Incorrect email or password' });
-  }
-
-  const token = signToken(user._id);
-  const refreshToken = signRefreshToken(user._id);
-  const refreshTokenExpiry = durationToMilliseconds(process.env.JWT_REFRESH_EXPIRES_IN);
-  
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'none',
-    maxAge: refreshTokenExpiry,
-  });
-  
-  res.status(200).json({ status: 'success', token, refreshToken, role: user.role });
-};
-
-// Token duration helper
-export const durationToMilliseconds = (duration) => {
-  const match = duration.match(/^(\d+)([dhms])$/);
-  if (!match) {
-    throw new Error(`Invalid duration format: ${duration}`);
-  }
-
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-
-  switch (unit) {
-    case 'd':
-      return value * 24 * 60 * 60 * 1000;
-    case 'h':
-      return value * 60 * 60 * 1000;
-    case 'm':
-      return value * 60 * 1000;
-    case 's':
-      return value * 1000;
-    default:
-      throw new Error(`Unknown time unit: ${unit}`);
-  }
-};
-
-// Refresh Token function
-export const refreshToken = async (req, res) => {
-  const { refreshToken } = req.body;
-
-  if (!refreshToken) {
-    return res.status(401).json({ status: 'fail', message: 'No refresh token provided' });
-  }
-
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const newToken = signToken(decoded.id);
-    res.status(200).json({ status: 'success', token: newToken });
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ status: 'fail', message: 'Please provide email and password' });
+
+    const user = await User.findOne({ email }).select('+password');
+    if (!user || !(await user.correctPassword(password, user.password)))
+      return res.status(401).json({ status: 'fail', message: 'Incorrect email or password' });
+
+    const token = signToken(user._id);
+    const refreshToken = signRefreshToken(user._id);
+    const refreshTokenExpiry = durationToMilliseconds(process.env.JWT_REFRESH_EXPIRES_IN || '7d');
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: refreshTokenExpiry,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      token,
+      refreshToken,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ status: 'fail', message: 'Login failed', error: err.message });
+  }
+};
+
+// Refresh Token
+export const refreshToken = async (req, res) => {
+  try {
+    const token = req.body?.refreshToken || req.cookies?.refreshToken;
+
+    if (!token)
+      return res.status(401).json({ status: 'fail', message: 'No refresh token provided' });
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const newAccessToken = signToken(decoded.id);
+
+    res.status(200).json({ status: 'success', token: newAccessToken });
+  } catch (err) {
+    console.error("Refresh token error:", err);
     res.status(401).json({ status: 'fail', message: 'Invalid refresh token' });
   }
 };
 
-
-
-
+// Forgot Password
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ status: 'fail', message: 'Please provide your email address.' });
-  }
-
   try {
+    const { email } = req.body;
+
+    if (!email)
+      return res.status(400).json({ status: 'fail', message: 'Please provide your email' });
+
     const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ status: 'fail', message: 'User not found' });
 
-    if (!user) {
-      return res.status(404).json({ status: 'fail', message: 'No user found with this email address.' });
-    }
-
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-    // Set token expiration time (1 hour)
-    const resetPasswordExpires = Date.now() + 3600000;
-
-    // Save token and expiration to the user's document
-    user.resetPasswordToken = resetPasswordToken;
-    user.resetPasswordExpires = resetPasswordExpires;
-    await user.save();
-
-    // Send reset link via email
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USERNAME, // Your email
-        pass: process.env.EMAIL_PASSWORD, // Your email password or app-specific password
-      },
-    });
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save({ validateBeforeSave: false });
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    const mailOptions = {
-      from: process.env.EMAIL_USERNAME,
-      to: user.email,
-      subject: 'Password Reset Request',
-      text: `You requested a password reset. Please click the link below to reset your password: \n\n ${resetUrl} \n\n If you did not request this, please ignore this email.`,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    res.status(200).json({ status: 'success', message: 'Password reset link sent to your email address.' });
-
-  } catch (err) {
-    res.status(500).json({ status: 'fail', message: err.message });
-  }
-};
-
-
-export const resetPassword = async (req, res) => {
-  const { token, newPassword, confirmPassword } = req.body;
-
-  // Validate that passwords match
-  if (newPassword !== confirmPassword) {
-    return res.status(400).json({ status: 'fail', message: 'Passwords do not match' });
-  }
-
-  try {
-    // Hash the token to compare with the stored reset token
-    const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
-
-    // Find the user with the matching token and check if it is expired
-    const user = await User.findOne({
-      resetPasswordToken,
-      resetPasswordExpires: { $gt: Date.now() }, // Ensure the token has not expired
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
     });
 
-    if (!user) {
-      return res.status(400).json({ status: 'fail', message: 'Invalid or expired reset token' });
-    }
+    await transporter.sendMail({
+      from: process.env.EMAIL_USERNAME,
+      to: email,
+      subject: 'Password Reset Request',
+      text: `Click to reset password: ${resetUrl}`,
+    });
 
-    // Update the user's password and clear the reset token fields
-    user.password = newPassword;
-    user.resetPasswordToken = undefined; // Clear the reset token
-    user.resetPasswordExpires = undefined; // Clear the expiration date
-    await user.save();
-
-    res.status(200).json({ status: 'success', message: 'Password successfully updated' });
-
+    res.status(200).json({ status: 'success', message: 'Reset link sent' });
   } catch (err) {
-    res.status(500).json({ status: 'fail', message: err.message });
+    console.error("Forgot password error:", err);
+    res.status(500).json({ status: 'fail', message: 'Failed to send email', error: err.message });
   }
 };
 
-// Delete User Account by Email and Password
-export const deleteUser = async (req, res) => {
-  const { email, password } = req.body;
-  console.log(email, password);
-
-  if (!email || !password) {
-    return res.status(400).json({ status: 'fail', message: 'Please provide both email and password' });
-  }
-
+// Reset Password
+export const resetPassword = async (req, res) => {
   try {
-    // Find user by email
-    const user = await User.findOne({ email }).select('+password'); // Ensure password is included in the result
+    const { token, newPassword, confirmPassword } = req.body;
 
-    if (!user) {
-      return res.status(404).json({ status: 'fail', message: 'No user found with this email address' });
-    }
+    if (!token || !newPassword || !confirmPassword)
+      return res.status(400).json({ status: 'fail', message: 'Missing fields' });
 
-    // Verify if the provided password matches the stored password
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    if (newPassword !== confirmPassword)
+      return res.status(400).json({ status: 'fail', message: 'Passwords do not match' });
 
-    if (!isPasswordCorrect) {
-      return res.status(401).json({ status: 'fail', message: 'Incorrect password' });
-    }
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    // 1. Delete related data in Role1 model if the user is a Role1
-    if (user.role === 'Role1') {
-      const Role1 = await Role1.findOneAndDelete({ _id: user._id });
-      if (Role1) {
-        console.log(`Role1 account with userId ${user._id} has been deleted.`);
-      }
-    }
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
 
-    // 2. Delete related data in Role2 model if the user is a Role2
-    if (user.role === 'Role2') {
-      const Role2 = await Role2.findOneAndDelete({ userId: user._id });
-      if (Role2) {
-        console.log(`Role2 account with userId ${user._id} has been deleted.`);
-      }
-    }
+    if (!user)
+      return res.status(400).json({ status: 'fail', message: 'Token expired or invalid' });
 
-   // 3. Delete the user from the database using deleteOne()
-   await User.deleteOne({ _id: user._id });
-    // Send success response
-    res.status(200).json({ status: 'success', message: 'User account deleted successfully' });
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
 
+    res.status(200).json({ status: 'success', message: 'Password reset successful' });
   } catch (err) {
-    res.status(500).json({ status: 'fail', message: err.message });
+    console.error("Reset password error:", err);
+    res.status(500).json({ status: 'fail', message: 'Could not reset password', error: err.message });
+  }
+};
+
+// Delete User
+export const deleteUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ status: 'fail', message: 'Email and password required' });
+
+    const user = await User.findOne({ email }).select('+password');
+
+    if (!user)
+      return res.status(404).json({ status: 'fail', message: 'User not found' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(401).json({ status: 'fail', message: 'Incorrect password' });
+
+    await User.deleteOne({ _id: user._id });
+    res.status(200).json({ status: 'success', message: 'User deleted successfully' });
+  } catch (err) {
+    console.error("Delete user error:", err);
+    res.status(500).json({ status: 'fail', message: 'Could not delete user', error: err.message });
   }
 };
