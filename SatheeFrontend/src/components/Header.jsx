@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext'; // Import the auth context
 
 function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth(); // Use auth context
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -20,6 +21,20 @@ function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    // Could add navigation here if needed
+  };
+
+  // Get user initials for avatar
+  const getUserInitial = () => {
+    if (user && user.fullName) {
+      return user.fullName.charAt(0).toUpperCase();
+    }
+    return 'N/A';
+  };
 
   return (
     <header className={`sticky top-0 z-50 transition-all duration-300 ${
@@ -73,7 +88,7 @@ function Header() {
             <NavLink to="/test">Test for Stress</NavLink>
             
             <div className="ml-6 flex items-center space-x-3">
-              {!isLoggedIn ? (
+              {!isAuthenticated ? (
                 <>
                   <Link 
                     to="/login" 
@@ -89,12 +104,22 @@ function Header() {
                   </Link>
                 </>
               ) : (
-                <button
-                  onClick={() => setIsLoggedIn(false)}
-                  className="px-5 py-2 rounded-full font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-red-200 transition-all duration-300"
-                >
-                  Logout
-                </button>
+                <>
+                  <div className="flex items-center mr-2">
+                    <div className="relative">
+                      <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-semibold">
+                        {getUserInitial()}
+                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="px-5 py-2 rounded-full font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-red-200 transition-all duration-300"
+                  >
+                    Logout
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -114,7 +139,7 @@ function Header() {
               <MobileNavLink to="/test" onClick={() => setMobileMenuOpen(false)}>Test for Stress</MobileNavLink>
               
               <div className="pt-3 grid grid-cols-2 gap-3">
-                {!isLoggedIn ? (
+                {!isAuthenticated ? (
                   <>
                     <Link 
                       to="/login" 
@@ -132,15 +157,25 @@ function Header() {
                     </Link>
                   </>
                 ) : (
-                  <button
-                    onClick={() => {
-                      setIsLoggedIn(false);
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full py-2 text-center rounded-full font-medium border border-gray-200 text-gray-700"
-                  >
-                    Logout
-                  </button>
+                  <>
+                    <div className="flex items-center justify-center col-span-2 pb-2">
+                      <div className="relative">
+                        <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-semibold text-lg">
+                          {getUserInitial()}
+                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="col-span-2 w-full py-2 text-center rounded-full font-medium border border-gray-200 text-gray-700"
+                    >
+                      Logout
+                    </button>
+                  </>
                 )}
               </div>
             </div>

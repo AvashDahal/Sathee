@@ -2,17 +2,22 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, Link } from 'react-router-dom';
 import { saveChat } from '../utilities/ChatStoreUtil';
+import { useAuth } from '../context/AuthContext';
+import AuthPopup from '../components/AuthPopup';
 
 function ChatbotPage() {
   const location = useLocation();
+  const { isAuthenticated, authLoading } = useAuth();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
   const chatContainerRef = useRef(null);
   const [processedMessages, setProcessedMessages] = useState(new Set());
   const [apiError, setApiError] = useState(null);
   const [chatId, setChatId] = useState(`chat-${Date.now()}`);
   const initialMessageSent = useRef(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   // Fallback responses in case API fails
   const fallbackResponses = [
@@ -24,6 +29,13 @@ function ChatbotPage() {
     "Remember, there are people who care about you and want to help.",
   ];
 
+  // Check authentication status when component mounts
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && !isGuest) {
+      setShowAuthPopup(true);
+    }
+  }, [authLoading, isAuthenticated, isGuest]);
+  
   // Initialize chat with welcome message only once
   useEffect(() => {
     // Check if we're continuing a previous conversation
@@ -71,44 +83,54 @@ function ChatbotPage() {
     }
   }, [messages, chatId]);
 
-  const fetchBotResponse = async (userMessage) => {
+ const fetchBotResponse = async (userMessage) => {
     try {
+      console.log(userMessage);
       setApiError(null);
-      const response = await fetch('http://localhost:5000/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_input: userMessage }),
-      });
-  
+      
+      // Get the token from localStorage or wherever you store it after login
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      
+      let response;
+      
+      if (isAuthenticated && token) {
+        // Authenticated request
+        response = await fetch('http://localhost:8000/api/v1/users/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ user_input: userMessage }),
+        });
+      } else {
+        // Guest request (no auth token)
+        response = await fetch('http://localhost:8000/api/v1/users/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_input: userMessage }),
+        });
+      }
+
       if (!response.ok) {
         throw new Error(`API responded with status ${response.status}`);
       }
-  
+
       const data = await response.json();
-      // Extract just the response part, not the thinking process
-      const fullResponse = data.final_safe_response || data.supportive_response;
-      
-      // If the response contains the pattern "Sathee's response would be..."
-      if (fullResponse.includes("Sathee's response would be")) {
-        // Extract only the actual response part (within quotes)
-        const actualResponse = fullResponse.match(/"([^"]+)"/);
-        if (actualResponse && actualResponse[1]) {
-          return actualResponse[1];
-        }
-        // If no quotes, try to extract everything after the colon
-        const colonSplit = fullResponse.split(":");
-        if (colonSplit.length > 1) {
-          return colonSplit.slice(1).join(":").trim();
-        }
+      console.log("API Response:", data);
+
+      // Use the botResponse field from your controller
+      const fullResponse = data.botResponse;
+
+      if (!fullResponse) {
+        console.warn("Invalid response format. Using fallback.");
+        return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       }
-      
+
       return fullResponse;
     } catch (error) {
       console.error('Error fetching response:', error);
       setApiError(error.message);
-      // Return a random fallback response if API fails
       return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
     }
   };
@@ -188,6 +210,12 @@ function ChatbotPage() {
     return text;
   };
 
+  // Handle auth popup close
+  const handleAuthPopupClose = () => {
+    setShowAuthPopup(false);
+    setIsGuest(true);
+  };
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -196,6 +224,8 @@ function ChatbotPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen flex items-center justify-center">
+      {showAuthPopup && <AuthPopup onClose={handleAuthPopupClose} />}
+      
       <div className="max-w-2xl w-full">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -226,21 +256,52 @@ function ChatbotPage() {
                 </motion.div>
                 <div>
                   <h2 className="text-2xl font-bold text-white">Sathee Companion</h2>
-                  <p className="text-blue-100 text-sm">Your supportive AI friend</p>
+                  <p className="text-blue-100 text-sm">
+                    {isAuthenticated ? 'Your personalized AI friend' : isGuest ? 'Guest mode' : 'Your supportive AI friend'}
+                  </p>
                 </div>
               </div>
-              <Link to="/history">
-                <motion.button 
-                  className="bg-white text-blue-600 py-2 px-4 rounded-full font-medium flex items-center"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                  History
-                </motion.button>
-              </Link>
+              <div className="flex space-x-2">
+                {isAuthenticated && (
+                  <Link to="/history">
+                    <motion.button 
+                      className="bg-white text-blue-600 py-2 px-4 rounded-full font-medium flex items-center"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      History
+                    </motion.button>
+                  </Link>
+                )}
+                {!isAuthenticated && !isGuest && (
+                  <Link to="/login">
+                    <motion.button 
+                      className="bg-white text-blue-600 py-2 px-4 rounded-full font-medium flex items-center"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                      Login
+                    </motion.button>
+                  </Link>
+                )}
+                {isGuest && (
+                  <Link to="/login">
+                    <motion.button 
+                      className="bg-white text-blue-600 py-2 px-4 rounded-full font-medium flex items-center"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Sign In
+                    </motion.button>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
           
@@ -326,6 +387,14 @@ function ChatbotPage() {
             {apiError && (
               <div className="text-center p-2 text-sm text-red-500">
                 <p>Connection issue. Using backup responses.</p>
+              </div>
+            )}
+            {isGuest && (
+              <div className="text-center mt-4 p-2 border border-yellow-200 bg-yellow-50 rounded-lg">
+                <p className="text-yellow-700 text-sm">
+                  You're using Sathee in guest mode. 
+                  <Link to="/login" className="ml-1 text-blue-600 hover:underline">Sign in</Link> to save your conversations.
+                </p>
               </div>
             )}
           </div>

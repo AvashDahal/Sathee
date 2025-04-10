@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ function Login() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,17 +31,9 @@ function Login() {
         withCredentials: true
       });
       
-      // Store tokens in localStorage
+      // Use the login function from AuthContext
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-      }
-      if (response.data.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
-      
-      // Store user data if needed
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        login(response.data.user, response.data.token, response.data.refreshToken);
       }
       
       // Show success message
@@ -57,6 +51,7 @@ function Login() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50 to-white">
