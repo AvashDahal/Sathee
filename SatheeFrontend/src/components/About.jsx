@@ -26,8 +26,8 @@ function About() {
   const teamMember = {
     name: "Avash Mani Dahal",
     role: "Computer Engineer",
-    image: "/team-member-1.png",
-    description: "Passionate about using technology to improve mental health accessibility across India. Combining expertise in AI and psychology to create supportive digital solutions."
+    image: "/profile.jpg",
+    description: "Data science enthusiast leveraging AI to tackle real-world challenges in mental health and tourism in Nepal. Driven by a passion for social impact, cultural preservation, and building accessible, tech-powered solutions"
   };
 
   // Scroll animation for section reveal
@@ -54,17 +54,17 @@ function About() {
             className="text-center max-w-3xl mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">About Sathee</h1>
-            <p className="text-xl text-gray-700 mb-10">Your companion on the journey to better mental health.</p>
+            <p className="text-xl text-gray-700 mb-10">Your saathi  on the journey to better mental health.</p>
             
             <div className="relative h-72 md:h-96 w-full rounded-2xl overflow-hidden mb-12 shadow-xl">
               <img 
-                src="/about-hero.png" 
+                src="/people.jpg" 
                 alt="Mental health support" 
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 to-transparent"></div>
               <div className="absolute bottom-8 left-0 right-0 text-white text-center">
-                <p className="text-xl md:text-2xl font-medium">Supporting mental wellbeing across India</p>
+                <p className="text-xl md:text-2xl font-medium">Supporting mental wellbeing across Nepal</p>
               </div>
             </div>
           </motion.div>
@@ -88,24 +88,24 @@ function About() {
             <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Our Mission</h2>
             <div className="space-y-6 text-gray-700">
               <p className="text-lg">
-                Sathee was founded with a simple yet powerful vision: to make mental health support accessible to everyone in India, regardless of their location or economic background.
+                Sathee was founded with a simple yet powerful vision: to make mental health support accessible to everyone in Nepal, regardless of their location, economic background, or cultural beliefs.
               </p>
               <p className="text-lg">
-                In a country where mental health resources are often scarce and stigma still exists, we aim to bridge the gap by providing a safe, confidential space for individuals to assess their mental wellbeing and receive guidance.
+                In our beautiful but challenging Himalayan landscape, where mental health resources are often scarce in remote areas and stigma still exists in many communities, we aim to bridge the gap by providing a safe, confidential space for individuals to assess their mental wellbeing and receive guidance.
               </p>
               <p className="text-lg">
-                Through our AI-powered platform, we offer initial assessments, personalized resources, and connections to professional help when needed – all while respecting cultural nuances and individual circumstances.
+                Through our AI-powered platform, we offer initial assessments, personalized resources, and connections to professional help when needed – all while respecting Nepali cultural nuances, traditional healing practices, and individual circumstances.
               </p>
             </div>
             
             {/* Mission stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
               <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="text-4xl font-bold text-blue-600 mb-2">50,000+</div>
-                <div className="text-gray-700 font-medium">Users Supported</div>
+                <div className="text-4xl font-bold text-blue-600 mb-2">25,000+</div>
+                <div className="text-gray-700 font-medium">Nepalis Supported</div>
               </div>
               <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="text-4xl font-bold text-blue-600 mb-2">100+</div>
+                <div className="text-4xl font-bold text-blue-600 mb-2">50+</div>
                 <div className="text-gray-700 font-medium">Mental Health Partners</div>
               </div>
               <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -135,7 +135,7 @@ function About() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold mb-4 text-gray-800 text-center">Assessment</h3>
-                <p className="text-gray-600 text-center">Take validated mental health assessments to understand your current wellbeing status.</p>
+                <p className="text-gray-600 text-center">Take culturally-adapted mental health assessments in Nepali and English to understand your current wellbeing status.</p>
               </div>
               
               <div className="backdrop-blur-sm bg-white/80 p-8 rounded-2xl shadow-lg border border-blue-50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -145,7 +145,7 @@ function About() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold mb-4 text-gray-800 text-center">Conversation</h3>
-                <p className="text-gray-600 text-center">Chat with our AI companion to express your feelings and receive supportive guidance.</p>
+                <p className="text-gray-600 text-center">Chat with our AI companion in Nepali or English to express your feelings and receive supportive guidance that respects local values.</p>
               </div>
               
               <div className="backdrop-blur-sm bg-white/80 p-8 rounded-2xl shadow-lg border border-blue-50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -155,7 +155,7 @@ function About() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold mb-4 text-gray-800 text-center">Connection</h3>
-                <p className="text-gray-600 text-center">Get connected with professional resources and support groups when needed.</p>
+                <p className="text-gray-600 text-center">Get connected with professional resources and support groups throughout Nepal when needed.</p>
               </div>
             </div>
           </motion.div>
@@ -223,12 +223,12 @@ function About() {
               <div className="backdrop-blur-sm bg-white/80 p-8 rounded-2xl shadow-lg border border-blue-50 relative">
                 <div className="absolute top-4 left-4 text-6xl text-blue-200 font-serif">"</div>
                 <div className="pt-6 px-4 relative z-10">
-                  <p className="text-gray-700 mb-6">Sathee helped me understand that what I was feeling was anxiety, and guided me through simple techniques to manage it. I'm grateful for this accessible support.</p>
+                  <p className="text-gray-700 mb-6">Sathee helped me understand that what I was feeling was anxiety, and guided me through simple techniques to manage it. I'm grateful for this accessible support that works even in my remote village.</p>
                   <div className="flex items-center">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">R</div>
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">B</div>
                     <div className="ml-4">
-                      <div className="font-medium text-gray-800">Rahul K.</div>
-                      <div className="text-sm text-gray-500">Student, Mumbai</div>
+                      <div className="font-medium text-gray-800">Bipin Tamang</div>
+                      <div className="text-sm text-gray-500">Student, Sindhupalchok</div>
                     </div>
                   </div>
                 </div>
@@ -237,12 +237,12 @@ function About() {
               <div className="backdrop-blur-sm bg-white/80 p-8 rounded-2xl shadow-lg border border-blue-50 relative">
                 <div className="absolute top-4 left-4 text-6xl text-blue-200 font-serif">"</div>
                 <div className="pt-6 px-4 relative z-10">
-                  <p className="text-gray-700 mb-6">As someone living in a small town with limited mental health resources, Sathee has been invaluable. The stress assessment helped me realize I needed to make lifestyle changes.</p>
+                  <p className="text-gray-700 mb-6">As someone living in a small town with limited mental health resources, Sathee has been invaluable. I appreciate that it understands our Nepali context and offers advice that respects our traditions.</p>
                   <div className="flex items-center">
                     <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">S</div>
                     <div className="ml-4">
-                      <div className="font-medium text-gray-800">Sangeeta M.</div>
-                      <div className="text-sm text-gray-500">Teacher, Rajasthan</div>
+                      <div className="font-medium text-gray-800">Sabina Gurung</div>
+                      <div className="text-sm text-gray-500">Teacher, Pokhara</div>
                     </div>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ function About() {
               We're here to help. Reach out with any questions about Sathee or how we can support your mental health journey.
             </p>
             <div className="space-y-4 md:space-y-0 md:flex md:justify-center md:space-x-6">
-              <a href="mailto:contact@sathee.org" className="inline-flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+              <a href="mailto:contact@sathee.org.np" className="inline-flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
@@ -283,8 +283,7 @@ function About() {
         </div>
       </section>
 
-      {/* Multi-color gradient bar at bottom */}
-      <div className="h-2 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
+     
     </div>
   );
 }
